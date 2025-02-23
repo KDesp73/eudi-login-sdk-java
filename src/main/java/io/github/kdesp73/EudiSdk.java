@@ -1,5 +1,7 @@
 package io.github.kdesp73;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.*;
 
 public class EudiSdk {
@@ -16,8 +18,9 @@ public class EudiSdk {
     }
 
     public static class ConfigOptions {
+        @SerializedName("required")
         private final Map<String, Boolean> options = new HashMap<>();
-        public Visibility visibility;
+        public int visibility;
 
         public ConfigOptions() {
             // Initialize all options to false by default
@@ -27,7 +30,7 @@ public class EudiSdk {
             for (String key : keys) {
                 options.put(key, false);
             }
-            this.visibility = Visibility.PUBLIC;
+            this.visibility = Visibility.PUBLIC.value;
         }
 
         public boolean hasAtLeastOneTrue() {
@@ -53,7 +56,7 @@ public class EudiSdk {
     }
 
     private static boolean anonymousCompatibility(ConfigOptions config) {
-        if (config.visibility == Visibility.PUBLIC) return true;
+        if (config.visibility == Visibility.PUBLIC.value) return true;
 
         return !(
             config.getOption("HealthID") ||
@@ -79,5 +82,6 @@ public class EudiSdk {
 
         Networking.startServer();
         Networking.openAuthWindow();
+        Networking.sendMessageWithRetry(config);
     }
 }
