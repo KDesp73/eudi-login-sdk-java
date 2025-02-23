@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+
+RED="\033[31m"
+GREEN="\033[32m"
+CYAN="\033[36m"
+RESET="\033[0m"
+
+DRY_RUN=false
+
+lognexec() {
+    echo -e "${CYAN}" "$@" "${RESET}"
+    if [ "$DRY_RUN" = false ]; then
+        "$@" || {
+            echo -e "${RED}Command failed: " "$@" "${RESET}" >&2
+            exit 1
+        }
+    fi
+}
+
+docs() {
+    echo -e "${CYAN}Generating documentation...${RESET}"
+    if ! command -v doxygen >/dev/null; then
+        echo -e "${RED}Error: 'doxygen' is not installed.${RESET}" >&2
+        exit 1
+    fi
+
+    rm -rf docs/
+    mkdir -p docs
+    lognexec doxygen
+    mv -f docs/html/* docs 2>/dev/null || true
+    rm -rf docs/html
+    echo -e "${GREEN}Documentation generated in ./docs${RESET}"
+}
+
+help() {
+    cat <<EOF
+USAGE
+  ./configure [OPTIONS] <commands>
+
+OPTIONS
+  --dry-run      Print commands without executing them
+
+COMMANDS
+  help           Prints this message
+  docs           Generate documentation
+  deploy         Deploy library to Maven Central
+  build          Build the jar
+  install        Install locally
+EOF
+}
+
+deploy() {
+    echo -e "${CYAN}Deploying to Maven Central...${RESET}"
+    lognexec mvn clean
+    lognexec mvn validate
+    lognexec mvn verify
+    lognexec mvn deploy
+    echo -e "${GREEN}Deployment completed.${RESET}"
+}
+
+build() {
+    echo -e "${CYAN}Building the project...${RESET}"
+    lognexec mvn clean package
+    echo -e "${GREEN}Build completed.${RESET}"
+}
+
+install() {
+    echo -e "${CYAN}Installing locally...${RESET}"
+    lognexec mvn clean install
+    echo -e "${GREEN}Installation completed.${RESET}"
+}
+
+if [[ "$1" == "--dry-run" ]]; then
+    DRY_RUN=true
+    shift
+fi
+
+if [ $# -eq 0 ]; then
+    help
+    exit 0
+fi
+
+for arg in "$@"; do
+    case "$arg" in
+        "help") help ;;
+        "docs") docs ;;
+        "deploy") deploy ;;
+        "build") build ;;
+        "version") version ;;
+        "install") install ;;
+        *)
+            echo -e "${RED}Unknown command: $arg${RESET}" >&2
+            help
+            exit 1
+            ;;
+    esac
+done
